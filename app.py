@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
+from ics import Calendar, Event
 
 # Load or initialize leads data
 def get_leads_data():
@@ -14,6 +15,18 @@ leads_data = get_leads_data()
 # Save leads data
 def save_leads_data(data):
     data.to_csv("leads_data.csv", index=False)
+
+# Generate Calendar File
+def generate_calendar_file(name, phone, follow_up_date):
+    calendar = Calendar()
+    event = Event()
+    event.name = f"Follow-up with {name}"
+    event.begin = follow_up_date.strftime("%Y-%m-%d 09:00:00")
+    event.description = f"Follow up with {name} at {phone}"
+    calendar.events.add(event)
+    
+    with open("follow_up_reminder.ics", "w") as f:
+        f.writelines(calendar)
 
 # App title
 st.title("Lead Management System")
@@ -41,7 +54,12 @@ if submit:
     })
     leads_data = pd.concat([leads_data, new_lead], ignore_index=True)
     save_leads_data(leads_data)
+    
+    # Create Calendar File
+    generate_calendar_file(name, phone, follow_up_date)
+    
     st.success("Lead added successfully!")
+    st.download_button("📅 Download Calendar Reminder", "follow_up_reminder.ics")
 
 # Upload leads from spreadsheet
 st.subheader("Upload Leads from Spreadsheet")
