@@ -1,34 +1,36 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-import urllib.parse  # For encoding calendar link
 
 # Load or initialize leads data
+@st.cache_data
 def get_leads_data():
     try:
         return pd.read_csv("leads_data.csv")
     except FileNotFoundError:
         return pd.DataFrame(columns=["Name", "Email", "Phone", "Source", "Salesperson", "Follow-up Date", "Status"])
 
-leads_data = get_leads_data()
-
-# Save leads data
 def save_leads_data(data):
     data.to_csv("leads_data.csv", index=False)
 
-# Generate Universal Calendar Link
-def generate_calendar_link(name, phone, follow_up_date):
-    details = f"Follow up with {name} at {phone}"
-    encoded_details = urllib.parse.quote(details)
-    formatted_date = follow_up_date.strftime("%Y%m%dT090000Z")  # Format for calendar links
-    
-    return (
-        f"https://calendar.google.com/calendar/render?action=TEMPLATE"
-        f"&text=Follow-up%20Reminder"
-        f"&dates={formatted_date}/{formatted_date}"
-        f"&details={encoded_details}"
-        f"&location="
-    )
+leads_data = get_leads_data()
+
+# Generate .ics Calendar File
+def generate_ics_file(name, phone, follow_up_date):
+    ics_content = f"""
+BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+SUMMARY:Follow-up Reminder
+DESCRIPTION:Don't forget to follow up with {name} at {phone}
+DTSTART;VALUE=DATE:{follow_up_date.strftime('%Y%m%d')}
+DTEND;VALUE=DATE:{follow_up_date.strftime('%Y%m%d')}
+END:VEVENT
+END:VCALENDAR
+"""
+    with open("follow_up_reminder.ics", "w") as file:
+        file.write(ics_content)
+    return "follow_up_reminder.ics"
 
 # App title
 st.title("Lead Management System")
@@ -56,12 +58,17 @@ if submit:
     })
     leads_data = pd.concat([leads_data, new_lead], ignore_index=True)
     save_leads_data(leads_data)
-    
-    # Create Calendar Link
-    calendar_link = generate_calendar_link(name, phone, follow_up_date)
-    
     st.success("Lead added successfully!")
-    st.markdown(f"[📅 Add Reminder to Calendar]({calendar_link})", unsafe_allow_html=True)
+
+    # Generate and offer .ics file download
+    ics_file = generate_ics_file(name, phone, follow_up_date)
+    with open(ics_file, "rb") as file:
+        st.download_button(
+            label="📅 Download Calendar Reminder",
+            data=file,
+            file_name="follow_up_reminder.ics",
+            mime="text/calendar"
+        )
 
 # Upload leads from spreadsheet
 st.subheader("Upload Leads from Spreadsheet")
@@ -80,7 +87,5 @@ if uploaded_file is not None:
 st.subheader("Leads List")
 if not leads_data.empty:
     st.dataframe(leads_data)
-    # Download Option
-    st.download_button("Download Leads", leads_data.to_csv(index=False), "leads_data.csv", "text/csv")
 else:
     st.info("No leads yet. Add some leads to get started.")
