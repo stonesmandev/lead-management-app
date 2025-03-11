@@ -13,19 +13,20 @@ def get_leads_data():
 
 leads_data = get_leads_data()
 
-# Generate .ics File for Native Calendar
+# Generate .ics file for calendar event
 def generate_ics_file(name, phone, follow_up_date):
-    c = Calendar()
-    e = Event()
-    e.name = f"Follow-up with {name}"
-    e.begin = follow_up_date.strftime("%Y-%m-%d 09:00:00")
-    e.description = f"Don't forget to follow up with {name} at {phone}"
-    c.events.add(e)
-
-    file_path = f"followup_{name.replace(' ', '_')}.ics"
+    cal = Calendar()
+    event = Event()
+    event.name = f"Follow-up with {name}"
+    event.begin = follow_up_date.strftime("%Y-%m-%d 09:00:00")
+    event.description = f"Don't forget to follow up with {name} at {phone}"
+    
+    cal.events.add(event)
+    
+    file_path = f"{name.replace(' ', '_')}_followup.ics"
     with open(file_path, 'w') as f:
-        f.writelines(c)
-
+        f.writelines(cal)
+    
     return file_path
 
 # App title
@@ -56,10 +57,15 @@ if submit:
     leads_data.to_csv("leads_data.csv", index=False)
     st.success("Lead added successfully!")
 
-    # Generate and display .ics file link
+    # Generate and download .ics file
     ics_file = generate_ics_file(name, phone, follow_up_date)
-    with open(ics_file, "rb") as file:
-        st.download_button("📅 Download Calendar Reminder", file, file_name=ics_file)
+    with open(ics_file, "rb") as f:
+        st.download_button(
+            label="📅 Download Calendar Reminder",
+            data=f,
+            file_name=ics_file,
+            mime="text/calendar"
+        )
 
 # Upload leads from spreadsheet
 st.subheader("Upload Leads from Spreadsheet")
