@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 # Load or initialize leads data
-@st.cache_data
 def get_leads_data():
     try:
         return pd.read_csv("leads_data.csv")
@@ -12,28 +11,9 @@ def get_leads_data():
 
 leads_data = get_leads_data()
 
-# Generate .ics Calendar File
-def generate_ics_file(name, phone, follow_up_date):
-    ics_content = f"""BEGIN:VCALENDAR
-VERSION:2.0
-BEGIN:VEVENT
-SUMMARY:Follow-up Reminder
-DESCRIPTION:Don't forget to follow up with {name} at {phone}
-DTSTART:{follow_up_date.strftime('%Y%m%dT090000')}
-DTEND:{follow_up_date.strftime('%Y%m%dT100000')}
-END:VEVENT
-END:VCALENDAR
-"""
-    with open("followup_reminder.ics", "w") as f:
-        f.write(ics_content)
-
-    with open("followup_reminder.ics", "rb") as file:
-        st.download_button(
-            label="📅 Download Calendar Reminder",
-            data=file,
-            file_name=f"{name}_followup.ics",
-            mime="text/calendar"
-        )
+# Save leads data
+def save_leads_data(data):
+    data.to_csv("leads_data.csv", index=False)
 
 # App title
 st.title("Lead Management System")
@@ -60,11 +40,8 @@ if submit:
         "Status": [status]
     })
     leads_data = pd.concat([leads_data, new_lead], ignore_index=True)
-    leads_data.to_csv("leads_data.csv", index=False)
+    save_leads_data(leads_data)
     st.success("Lead added successfully!")
-
-    # Generate .ics file for native calendar
-    generate_ics_file(name, phone, follow_up_date)
 
 # Upload leads from spreadsheet
 st.subheader("Upload Leads from Spreadsheet")
@@ -74,7 +51,7 @@ if uploaded_file is not None:
     required_columns = ["Name", "Email", "Phone"]
     if all(col in uploaded_leads.columns for col in required_columns):
         leads_data = pd.concat([leads_data, uploaded_leads], ignore_index=True)
-        leads_data.to_csv("leads_data.csv", index=False)
+        save_leads_data(leads_data)
         st.success("Leads uploaded successfully!")
     else:
         st.error("Uploaded file must contain 'Name', 'Email', and 'Phone' columns.")
@@ -83,5 +60,7 @@ if uploaded_file is not None:
 st.subheader("Leads List")
 if not leads_data.empty:
     st.dataframe(leads_data)
+    # Download Option
+    st.download_button("Download Leads", leads_data.to_csv(index=False), "leads_data.csv", "text/csv")
 else:
     st.info("No leads yet. Add some leads to get started.")
