@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
+import os
 
 # Load or initialize leads data
-@st.cache_data
 def get_leads_data():
-    try:
+    if os.path.exists("leads_data.csv"):
         return pd.read_csv("leads_data.csv")
-    except FileNotFoundError:
+    else:
         return pd.DataFrame(columns=["Name", "Email", "Phone", "Source", "Salesperson", "Follow-up Date", "Status"])
 
 def save_leads_data(data):
@@ -85,6 +85,7 @@ if uploaded_file is not None:
 
 # Display leads
 st.subheader("Leads List")
+leads_data = get_leads_data()  # Refresh the data to ensure loaded data is shown
 if not leads_data.empty:
     st.dataframe(leads_data)
 else:
