@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-import urllib.parse  # For encoding calendar link
+from ics import Calendar, Event
 
 # Load or initialize leads data
 @st.cache_data
@@ -13,18 +13,20 @@ def get_leads_data():
 
 leads_data = get_leads_data()
 
-# Generate Calendar Link Function
-def generate_calendar_link(name, phone, follow_up_date):
-    encoded_details = urllib.parse.quote(f"Don't forget to follow up with {name} at {phone}")
-    formatted_date = follow_up_date.strftime("%Y%m%d")  # Calendar requires YYYYMMDD format
-    
-    return (
-        f"https://calendar.google.com/calendar/event?action=TEMPLATE"
-        f"&text=Follow-up%20Reminder"
-        f"&dates={formatted_date}/{formatted_date}"
-        f"&details={encoded_details}"
-        f"&location="
-    )
+# Generate .ics File for Native Calendar
+def generate_ics_file(name, phone, follow_up_date):
+    c = Calendar()
+    e = Event()
+    e.name = f"Follow-up with {name}"
+    e.begin = follow_up_date.strftime("%Y-%m-%d 09:00:00")
+    e.description = f"Don't forget to follow up with {name} at {phone}"
+    c.events.add(e)
+
+    file_path = f"followup_{name.replace(' ', '_')}.ics"
+    with open(file_path, 'w') as f:
+        f.writelines(c)
+
+    return file_path
 
 # App title
 st.title("Lead Management System")
@@ -54,9 +56,10 @@ if submit:
     leads_data.to_csv("leads_data.csv", index=False)
     st.success("Lead added successfully!")
 
-    # Generate and display Calendar Link
-    calendar_link = generate_calendar_link(name, phone, follow_up_date)
-    st.markdown(f"[📅 Add Reminder to Calendar]({calendar_link})", unsafe_allow_html=True)
+    # Generate and display .ics file link
+    ics_file = generate_ics_file(name, phone, follow_up_date)
+    with open(ics_file, "rb") as file:
+        st.download_button("📅 Download Calendar Reminder", file, file_name=ics_file)
 
 # Upload leads from spreadsheet
 st.subheader("Upload Leads from Spreadsheet")
@@ -77,4 +80,3 @@ if not leads_data.empty:
     st.dataframe(leads_data)
 else:
     st.info("No leads yet. Add some leads to get started.")
-
