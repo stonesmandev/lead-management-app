@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-from urllib.parse import quote
+from ics import Calendar, Event
 
 # Load or initialize leads data
 @st.cache_data
@@ -13,23 +13,23 @@ def get_leads_data():
 
 leads_data = get_leads_data()
 
-# Function to Generate Calendar Link
-def generate_calendar_link(name, follow_up_date):
-    start_date = follow_up_date.strftime("%Y%m%dT100000")
-    end_date = follow_up_date.strftime("%Y%m%dT110000")
-    title = quote(f"Follow-up Reminder: {name}")
-    description = quote(f"Reminder to follow up with {name}.")
-    calendar_link = f"https://calendar.google.com/calendar/u/0/r/eventedit?text={title}&dates={start_date}/{end_date}&details={description}"
-    return calendar_link
+# Function to generate .ics file
+def generate_ics_file(name, follow_up_date):
+    c = Calendar()
+    e = Event()
+    e.name = f"Follow-up Reminder: {name}"
+    e.begin = follow_up_date.strftime("%Y-%m-%d 10:00:00")
+    e.end = follow_up_date.strftime("%Y-%m-%d 11:00:00")
+    e.description = f"Reminder to follow up with {name}."
+    c.events.add(e)
+    
+    file_path = f"{name}_followup_reminder.ics"
+    with open(file_path, "w") as f:
+        f.writelines(c)
+    return file_path
 
 # App title
 st.title("Lead Management System")
-
-# Load existing data from file (ensures no overwrite)
-try:
-    existing_data = pd.read_csv("leads_data.csv")
-except FileNotFoundError:
-    existing_data = pd.DataFrame(columns=["Name", "Email", "Phone", "Source", "Salesperson", "Follow-up Date", "Status"])
 
 # Lead Entry Form
 with st.form("lead_form"):
@@ -52,19 +52,14 @@ if submit:
         "Follow-up Date": [follow_up_date],
         "Status": [status]
     })
-    leads_data = pd.concat([existing_data, new_lead], ignore_index=True)
+    leads_data = pd.concat([leads_data, new_lead], ignore_index=True)
     leads_data.to_csv("leads_data.csv", index=False)
     st.success("Lead added successfully!")
-    
-    # Calendar Link Generation
-    calendar_link = generate_calendar_link(name, follow_up_date)
-    st.markdown(f"📅 [Click here to create a calendar reminder for {name}]({calendar_link})")
-    
-    # Suggested WhatsApp Message
-    whatsapp_message = f"Hi {name},\n\nPlease click the link below to set a reminder for our follow-up on {follow_up_date}:\n{calendar_link}"
-    encoded_message = quote(whatsapp_message)
-    whatsapp_link = f"https://wa.me/?text={encoded_message}"
-    st.markdown(f"💬 [Send Reminder on WhatsApp]({whatsapp_link})")
+
+    # Generate .ics calendar file
+    ics_file = generate_ics_file(name, follow_up_date)
+    with open(ics_file, "rb") as file:
+        st.download_button(label="📅 Download Calendar Reminder", data=file, file_name=ics_file, mime="text/calendar")
 
 # Upload leads from spreadsheet
 st.subheader("Upload Leads from Spreadsheet")
