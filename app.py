@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-from ics import Calendar, Event
+import urllib.parse  # For encoding calendar link
 
 # Load or initialize leads data
 def get_leads_data():
@@ -16,17 +16,19 @@ leads_data = get_leads_data()
 def save_leads_data(data):
     data.to_csv("leads_data.csv", index=False)
 
-# Generate Calendar File
-def generate_calendar_file(name, phone, follow_up_date):
-    calendar = Calendar()
-    event = Event()
-    event.name = f"Follow-up with {name}"
-    event.begin = follow_up_date.strftime("%Y-%m-%d 09:00:00")
-    event.description = f"Follow up with {name} at {phone}"
-    calendar.events.add(event)
+# Generate Universal Calendar Link
+def generate_calendar_link(name, phone, follow_up_date):
+    details = f"Follow up with {name} at {phone}"
+    encoded_details = urllib.parse.quote(details)
+    formatted_date = follow_up_date.strftime("%Y%m%dT090000Z")  # Format for calendar links
     
-    with open("follow_up_reminder.ics", "w") as f:
-        f.writelines(calendar)
+    return (
+        f"https://calendar.google.com/calendar/render?action=TEMPLATE"
+        f"&text=Follow-up%20Reminder"
+        f"&dates={formatted_date}/{formatted_date}"
+        f"&details={encoded_details}"
+        f"&location="
+    )
 
 # App title
 st.title("Lead Management System")
@@ -55,11 +57,11 @@ if submit:
     leads_data = pd.concat([leads_data, new_lead], ignore_index=True)
     save_leads_data(leads_data)
     
-    # Create Calendar File
-    generate_calendar_file(name, phone, follow_up_date)
+    # Create Calendar Link
+    calendar_link = generate_calendar_link(name, phone, follow_up_date)
     
     st.success("Lead added successfully!")
-    st.download_button("📅 Download Calendar Reminder", "follow_up_reminder.ics")
+    st.markdown(f"[📅 Add Reminder to Calendar]({calendar_link})", unsafe_allow_html=True)
 
 # Upload leads from spreadsheet
 st.subheader("Upload Leads from Spreadsheet")
