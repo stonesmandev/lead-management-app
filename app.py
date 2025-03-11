@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-from ics import Calendar, Event
 
 # Load or initialize leads data
 @st.cache_data
@@ -13,21 +12,28 @@ def get_leads_data():
 
 leads_data = get_leads_data()
 
-# Generate .ics file for calendar event
+# Generate .ics Calendar File
 def generate_ics_file(name, phone, follow_up_date):
-    cal = Calendar()
-    event = Event()
-    event.name = f"Follow-up with {name}"
-    event.begin = follow_up_date.strftime("%Y-%m-%d 09:00:00")
-    event.description = f"Don't forget to follow up with {name} at {phone}"
-    
-    cal.events.add(event)
-    
-    file_path = f"{name.replace(' ', '_')}_followup.ics"
-    with open(file_path, 'w') as f:
-        f.writelines(cal)
-    
-    return file_path
+    ics_content = f"""BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+SUMMARY:Follow-up Reminder
+DESCRIPTION:Don't forget to follow up with {name} at {phone}
+DTSTART:{follow_up_date.strftime('%Y%m%dT090000')}
+DTEND:{follow_up_date.strftime('%Y%m%dT100000')}
+END:VEVENT
+END:VCALENDAR
+"""
+    with open("followup_reminder.ics", "w") as f:
+        f.write(ics_content)
+
+    with open("followup_reminder.ics", "rb") as file:
+        st.download_button(
+            label="📅 Download Calendar Reminder",
+            data=file,
+            file_name=f"{name}_followup.ics",
+            mime="text/calendar"
+        )
 
 # App title
 st.title("Lead Management System")
@@ -57,15 +63,8 @@ if submit:
     leads_data.to_csv("leads_data.csv", index=False)
     st.success("Lead added successfully!")
 
-    # Generate and download .ics file
-    ics_file = generate_ics_file(name, phone, follow_up_date)
-    with open(ics_file, "rb") as f:
-        st.download_button(
-            label="📅 Download Calendar Reminder",
-            data=f,
-            file_name=ics_file,
-            mime="text/calendar"
-        )
+    # Generate .ics file for native calendar
+    generate_ics_file(name, phone, follow_up_date)
 
 # Upload leads from spreadsheet
 st.subheader("Upload Leads from Spreadsheet")
