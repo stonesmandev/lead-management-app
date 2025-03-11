@@ -62,6 +62,19 @@ if submit:
     # Send email reminder
     send_email(name, email, follow_up_date)
 
+# Upload leads from spreadsheet
+st.subheader("Upload Leads from Spreadsheet")
+uploaded_file = st.file_uploader("Choose a file", type=["csv", "xlsx"])
+if uploaded_file is not None:
+    uploaded_leads = pd.read_csv(uploaded_file) if uploaded_file.name.endswith(".csv") else pd.read_excel(uploaded_file)
+    required_columns = ["Name", "Email", "Phone"]
+    if all(col in uploaded_leads.columns for col in required_columns):
+        leads_data = pd.concat([leads_data, uploaded_leads], ignore_index=True)
+        leads_data.to_csv("leads_data.csv", index=False)
+        st.success("Leads uploaded successfully!")
+    else:
+        st.error("Uploaded file must contain 'Name', 'Email', and 'Phone' columns.")
+
 # Display leads
 st.subheader("Leads List")
 if not leads_data.empty:
